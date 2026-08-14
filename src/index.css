@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  @apply bg-ink-950 text-ink-100 font-sans antialiased;
+  background-image: radial-gradient(1200px 600px at 80% -10%, rgba(76,195,255,0.06), transparent),
+                    radial-gradient(900px 500px at -10% 110%, rgba(61,220,151,0.05), transparent);
+}
+.num { @apply font-num tabular-nums; }
+.card { @apply bg-ink-900/80 border border-ink-700/60 rounded-xl; }
+.btn { @apply px-3 py-1.5 rounded-lg text-sm font-medium bg-ink-700 hover:bg-ink-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+.btn-primary { @apply bg-mint-500/90 hover:bg-mint-400 text-ink-950; }
+.btn-danger { @apply bg-coral-400/20 text-coral-400 hover:bg-coral-400/30; }
+.btn-ghost { @apply bg-transparent hover:bg-ink-800; }
+.label { @apply text-[11px] uppercase tracking-wider text-ink-400; }
+input[type="range"] { @apply accent-mint-400; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { @apply bg-ink-700 rounded; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+.toast { animation: toast-in .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
