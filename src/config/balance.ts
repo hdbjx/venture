@@ -12,8 +12,15 @@ export const START = {
   ownerHoursPerDay: 8,
 };
 
+export const EVENTS_PACE = {
+  quietUntilDay: 10, // no random events at all before this
+  earlyChance: 0.06, // daily event chance until earlyUntilDay
+  earlyUntilDay: 25,
+  chance: 0.11, // steady-state daily event chance
+};
+
 export const TIME = {
-  msPerDay: { 1: 2000, 2: 1000, 4: 500 } as Record<number, number>,
+  msPerDay: { 1: 4500, 2: 2200, 4: 1100 } as Record<number, number>,
   statsCap: 730, // keep 2 years of daily stats
   reviewsCap: 60,
   historyCap: 200,
@@ -57,7 +64,7 @@ export const CUSTOMER_TYPES: Record<CustomerType, CustomerTypeDef> = {
 
 export const DEMAND = {
   organicLeadsBase: 0.5, // leads/day before marketing, scaled by brand & reputation
-  jobOfferLifeDays: 4,
+  jobOfferLifeDays: 6,
   // conversion: leads -> job offers you actually see
   conversionBase: 0.55,
   reputationConversionBonus: 0.08, // per star above 3
@@ -66,6 +73,9 @@ export const DEMAND = {
   priceIndexMin: 0.6,
   priceIndexMax: 1.8,
   maxOpenOffers: 14,
+  // Early-game ramp: open-offer cap grows from rampStartOffers by 1 every rampDaysPerOffer days.
+  rampStartOffers: 3,
+  rampDaysPerOffer: 4,
 };
 
 export const QUALITY = {
@@ -83,8 +93,8 @@ export const QUALITY = {
 export const EMPLOYEES = {
   wagePerSkillPoint: 1.45, // daily wage ≈ 60 + skill*this
   wageBase: 54,
-  candidateEveryDays: 5,
-  candidateStayDays: 10,
+  candidateEveryDays: 7,
+  candidateStayDays: 14,
   maxCandidates: 5,
   trainingCostPerDay: 90,
   trainingDays: 5,
