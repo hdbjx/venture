@@ -5,25 +5,52 @@ import { A } from "../../state/store";
 import { SERVICE_LABEL } from "../../config/content";
 import { EMPLOYEES, SERVICES } from "../../config/balance";
 import { conversionRate, laborPool } from "../../sim/engine";
+import { Scene } from "../Scene";
 
-const typeBadge: Record<string, string> = {
-  budget: "text-ink-300", normal: "text-ink-200", premium: "text-gold-400",
-  difficult: "text-coral-400", loyal: "text-mint-400", commercial: "text-sky2-400",
+const TYPE_META: Record<string, { emoji: string; cls: string }> = {
+  budget: { emoji: "🪙", cls: "text-ink-300 border-ink-700" },
+  normal: { emoji: "🏠", cls: "text-ink-200 border-ink-700" },
+  premium: { emoji: "💎", cls: "text-gold-400 border-gold-400/40" },
+  difficult: { emoji: "⛈️", cls: "text-coral-400 border-coral-400/40" },
+  loyal: { emoji: "🤝", cls: "text-mint-400 border-mint-400/40" },
+  commercial: { emoji: "🏢", cls: "text-sky2-400 border-sky2-400/40" },
 };
+const hueOf = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; };
 
-function JobRow({ j, offered }: { j: Job; offered: boolean }) {
+export function Avatar({ name, size = 34 }: { name: string; size?: number }) {
+  const h = hueOf(name);
+  const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("");
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-ink-800 last:border-0">
+    <div className="rounded-full grid place-items-center font-bold shrink-0"
+      style={{ width: size, height: size, fontSize: size * 0.36, background: `hsl(${h} 40% 26%)`, color: `hsl(${h} 70% 78%)`, border: `1.5px solid hsl(${h} 45% 40%)` }}>
+      {initials}
+    </div>
+  );
+}
+
+function JobRow({ j, offered, day }: { j: Job; offered: boolean; day: number }) {
+  const meta = TYPE_META[j.customerType];
+  const daysLeft = j.expiresOn - day;
+  return (
+    <div className={`ticket flex items-center gap-3 p-2.5 my-1.5 rounded-xl bg-ink-800/60 border ${offered ? meta.cls.split(" ")[1] : "border-ink-800"}`}>
+      <Avatar name={j.customerName} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm truncate">
-          {SERVICE_LABEL[j.service]} <span className="text-ink-400">for</span> {j.customerName}{" "}
-          <span className={`text-xs ${typeBadge[j.customerType]}`}>({j.customerType})</span>
+        <div className="text-sm truncate font-medium">
+          {SERVICE_LABEL[j.service]} <span className="text-ink-500 font-normal">·</span> {j.customerName}{" "}
+          <span className={`text-xs ${meta.cls.split(" ")[0]}`}>{meta.emoji} {j.customerType}</span>
         </div>
-        <div className="text-xs text-ink-400 num">
-          {fmt(j.value)} · {j.hours}h · difficulty {j.difficulty} · expects {j.expectation}+ quality
-          {offered && <> · expires day {j.expiresOn}</>}
+        <div className="text-xs text-ink-400 num flex items-center gap-2 flex-wrap">
+          <span className="text-ink-200 font-semibold">{fmt(j.value)}</span>
+          <span>{j.hours}h</span>
+          <span>{"🔥".repeat(Math.max(1, Math.ceil(j.difficulty / 34)))}</span>
+          <Tip tip="Deliver at least this quality or expect a rough review."><span>expects {j.expectation}+</span></Tip>
+          {offered && (
+            <span className={daysLeft <= 2 ? "text-coral-400 font-semibold" : "text-ink-500"}>
+              {daysLeft <= 0 ? "expiring!" : `${daysLeft}d to decide`}
+            </span>
+          )}
         </div>
-        {!offered && <div className="mt-1 w-40"><Bar value={j.progress} max={j.hours} tone="sky" /></div>}
+        {!offered && <div className="mt-1.5 w-44"><Bar value={j.progress} max={j.hours} tone="sky" /></div>}
       </div>
       {offered ? (
         <div className="flex gap-2">
@@ -31,7 +58,7 @@ function JobRow({ j, offered }: { j: Job; offered: boolean }) {
           <button className="btn btn-ghost" onClick={() => A.rejectJob(j.id)}>Pass</button>
         </div>
       ) : (
-        <span className="text-xs text-ink-400">{j.status === "inProgress" ? "in progress" : "scheduled"}</span>
+        <span className="text-xs text-ink-400">{j.status === "inProgress" ? "🧽 working" : "📋 queued"}</span>
       )}
     </div>
   );
@@ -50,7 +77,7 @@ export function JobsTab({ g }: { g: GameState }) {
         <Tip tip="Leads convert into requests based on price, reputation, brand and competitor pricing."><span className="label num">conv {(conversionRate(g) * 100).toFixed(0)}%</span></Tip>
       }>
         {offered.length === 0 && <div className="text-sm text-ink-400 py-4">No open requests. Marketing and reputation bring in leads — check the Marketing tab.</div>}
-        {offered.map((j) => <JobRow key={j.id} j={j} offered />)}
+        {offered.map((j) => <JobRow key={j.id} j={j} offered day={g.day} />)}
       </Card>
       <div className="space-y-4">
         <Card title={`Scheduled work (${active.length})`} right={
@@ -59,7 +86,7 @@ export function JobsTab({ g }: { g: GameState }) {
           </Tip>
         }>
           {active.length === 0 && <div className="text-sm text-ink-400 py-4">Nothing scheduled. Accept a request to get to work.</div>}
-          {active.map((j) => <JobRow key={j.id} j={j} offered={false} />)}
+          {active.map((j) => <JobRow key={j.id} j={j} offered={false} day={g.day} />)}
         </Card>
         <Card title="Recently completed">
           {recent.length === 0 && <div className="text-sm text-ink-400">No completed jobs yet.</div>}
@@ -100,7 +127,9 @@ export function OverviewTab({ g }: { g: GameState }) {
   const recentReviews = [...g.reviews].slice(-5).reverse();
   const timeline = [...g.history].reverse().slice(0, 10);
   return (
-    <div className="grid lg:grid-cols-3 gap-4">
+    <div>
+      <Scene g={g} />
+      <div className="grid lg:grid-cols-3 gap-4">
       <div className="space-y-4 lg:col-span-2">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card><Stat label="Open requests" value={offered} tip="Jobs waiting for you to accept or pass." /></Card>
@@ -151,6 +180,7 @@ export function OverviewTab({ g }: { g: GameState }) {
         </Card>
       </div>
     </div>
+    </div>
   );
 }
 
@@ -168,12 +198,16 @@ export function TeamTab({ g }: { g: GameState }) {
           {g.employees.map((e) => (
             <div key={e.id} className="border border-ink-800 rounded-lg p-3">
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex items-start gap-2.5">
+                  <Avatar name={e.name} size={38} />
+                  <div>
                   <div className="font-medium">
-                    {e.name} {e.isManager && <span className="text-sky2-400 text-xs">MANAGER</span>}
+                    {e.name} {e.morale >= 75 ? "😄" : e.morale >= 45 ? "🙂" : e.morale >= 22 ? "😟" : "😡"}{" "}
+                    {e.isManager && <span className="text-sky2-400 text-xs">MANAGER</span>}
                     {e.trainingDaysLeft > 0 && <span className="text-gold-400 text-xs ml-1">in training ({e.trainingDaysLeft}d)</span>}
                   </div>
                   <div className="text-xs text-ink-400">age {e.age} · {fmt(e.wage)}/day · {e.traits.join(", ") || "no notable traits"}</div>
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Tip tip={`5-day course, ${fmt(EMPLOYEES.trainingCostPerDay * EMPLOYEES.trainingDays)}. +skill toward potential (${e.potential}).`}>
