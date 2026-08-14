@@ -2,6 +2,7 @@ import type { Employee, GameState, Job, Review } from "./types";
 import {
   BRAND, CUSTOMER_TYPES, DEMAND, DIFFICULTY_MODS, EMPLOYEES, EQUIPMENT_MAINT,
   FINANCE, MARKET, QUALITY, REPUTATION, SERVICES, START, TIME,
+  EVENTS_PACE,
 } from "../config/balance";
 import { CHANNELS, EQUIP_TIERS, EVENTS, MILESTONES, REVIEW_LINES, SERVICE_LABEL } from "../config/content";
 import { chance, makeCandidate, makeCustomer, makeJobOffer, pick, ri, rng } from "./gen";
@@ -65,7 +66,7 @@ export const bestEquip = (s: GameState) => {
 
 export const dateOf = (s: GameState, day = s.day) => new Date(s.startEpoch + day * 86400000);
 export const fmtDate = (s: GameState, day = s.day) =>
-  dateOf(s, day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  dateOf(s, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
 // ------------------------------------------------------------------ demand
 function priceIndexAvg(s: GameState) {
@@ -114,7 +115,7 @@ export function leadsToday(s: GameState): number {
 
 function generateOffers(s: GameState) {
   const open = s.jobs.filter((j) => j.status === "offered").length;
-  let cap = DEMAND.maxOpenOffers + (hasUp(s, "sched") ? 2 : 0);
+  let cap = Math.min(DEMAND.maxOpenOffers, DEMAND.rampStartOffers + Math.floor(s.day / DEMAND.rampDaysPerOffer)) + (hasUp(s, "sched") ? 2 : 0);
   const leads = leadsToday(s);
   dayStat(s).leads += leads;
   const cv = conversionRate(s);
@@ -363,8 +364,9 @@ function marketTick(s: GameState) {
 // --------------------------------------------------------------- events
 function maybeEvent(s: GameState) {
   if (s.pendingChoice) return;
-  if (s.day < 5) return;
-  if (!chance(s, 0.13)) return;
+  if (s.day < EVENTS_PACE.quietUntilDay) return;
+  const p = s.day < EVENTS_PACE.earlyUntilDay ? EVENTS_PACE.earlyChance : EVENTS_PACE.chance;
+  if (!chance(s, p)) return;
   const mods = DIFFICULTY_MODS[s.difficulty];
   const pool = EVENTS.filter((e) => (e.minDay ?? 0) <= s.day && (e.minEmployees ?? 0) <= s.employees.length);
   let total = 0;
@@ -485,16 +487,39 @@ function checkMilestones(s: GameState) {
   if (!has("rev1m") && s.lifetimeRevenue >= 1000000) grant("rev1m");
 }
 
+// Sunday: the company rests. Crews recover morale, the owner sheds fatigue, and a week recap lands.
+function weeklyRecap(s: GameState) {
+  s.ownerFatigue = Math.max(0, s.ownerFatigue - 25);
+  for (const emp of s.employees) emp.morale = Math.min(100, emp.morale + 2);
+  const week = s.stats.slice(-7);
+  const rev = week.reduce((a, d) => a + d.revenue, 0);
+  const exp = week.reduce((a, d) => a + d.expenses, 0);
+  const jobs = week.reduce((a, d) => a + d.jobsDone, 0);
+  const profit = rev - exp;
+  toast(
+    s,
+    `Sunday — closed. Last week: ${jobs} job${jobs === 1 ? "" : "s"}, $${Math.round(rev).toLocaleString()} in, ` +
+      `${profit >= 0 ? "$" + Math.round(profit).toLocaleString() + " profit" : "-$" + Math.round(-profit).toLocaleString() + " loss"}.`,
+    profit >= 0 ? "good" : "bad"
+  );
+  log(s, `Week ended: ${jobs} jobs, $${Math.round(rev).toLocaleString()} revenue, ${profit >= 0 ? "$" + Math.round(profit).toLocaleString() + " profit" : "$" + Math.round(-profit).toLocaleString() + " loss"}.`, "info");
+}
+
 // --------------------------------------------------------------- main tick
 export function advanceDay(s: GameState) {
   s.day++;
   dayStat(s); // open today's record
-  generateOffers(s);
-  workJobs(s);
+  const sunday = s.day % 7 === 6; // startEpoch is a Monday
+  if (!sunday) {
+    generateOffers(s);
+    workJobs(s);
+  } else {
+    weeklyRecap(s);
+  }
   peopleTick(s);
   dailyFinance(s);
   marketTick(s);
-  maybeEvent(s);
+  if (!sunday) maybeEvent(s);
   checkMilestones(s);
   const d = dayStat(s);
   d.cash = s.cash;
