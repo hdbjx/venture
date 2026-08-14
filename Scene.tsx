@@ -146,3 +146,4 @@ export function Scene({ g }: { g: GameState }) {
     </div>
   );
 }
+
