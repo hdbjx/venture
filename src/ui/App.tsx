@@ -5,6 +5,7 @@ import { fmtDate, money } from "../sim/engine";
 import { TIME } from "../config/balance";
 import { Card, Modal, Stars, Tip, fmt } from "./bits";
 import { JobsTab, OverviewTab, TeamTab } from "./tabs/CoreTabs";
+import { companyLevel } from "./Scene";
 import { EquipmentTab, FinancesTab, MarketingTab, UpgradesTab } from "./tabs/BizTabs";
 import { advanceDay } from "../sim/engine";
 import { makeCandidate, makeCustomer, makeJobOffer } from "../sim/gen";
@@ -56,17 +57,56 @@ function NewGameScreen() {
 }
 
 // ------------------------------------------------------------------ topbar
+function CashHUD({ g }: { g: GameState }) {
+  const prev = useRef(g.cash);
+  const [floats, setFloats] = useState<{ id: number; amt: number }[]>([]);
+  const idRef = useRef(0);
+  useEffect(() => {
+    const delta = g.cash - prev.current;
+    prev.current = g.cash;
+    if (Math.abs(delta) >= 1) {
+      const id = ++idRef.current;
+      setFloats((f) => [...f.slice(-2), { id, amt: delta }]);
+      const t = setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [g.cash]);
+  return (
+    <Tip tip="Cash on hand. Don't let payroll catch you at zero.">
+      <span className="relative inline-block">
+        <span className={`num font-bold text-base ${g.cash < 0 ? "text-coral-400" : g.cash < 250 ? "text-gold-400" : "text-mint-400"}`}>{money(g.cash)}</span>
+        {floats.map((f) => (
+          <span key={f.id} className={`cash-float absolute -top-1 left-full ml-2 num text-xs font-semibold pointer-events-none whitespace-nowrap ${f.amt >= 0 ? "text-mint-400" : "text-coral-400"}`}>
+            {f.amt >= 0 ? "+" : "−"}{money(Math.abs(f.amt))}
+          </span>
+        ))}
+      </span>
+    </Tip>
+  );
+}
+
 function TopBar({ g }: { g: GameState }) {
   const setSpeed = useGame((s) => s.setSpeed);
-  const profitToday = (() => {
-    const d = g.stats[g.stats.length - 1];
-    return d ? d.revenue - d.expenses : 0;
-  })();
+  const lv = companyLevel(g);
+  const sunday = g.day % 7 === 6;
   return (
     <div className="sticky top-0 z-30 bg-ink-950/90 backdrop-blur border-b border-ink-800">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-4 flex-wrap">
-        <div className="font-bold tracking-tight">{g.companyName}</div>
-        <div className="num text-sm text-ink-300">{fmtDate(g)} <span className="text-ink-500">· day {g.day}</span></div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-mint-500 to-sky2-500 grid place-items-center font-black text-ink-950 text-sm shadow-lg shadow-mint-500/20">
+            {g.companyName.slice(0, 1).toUpperCase()}
+          </div>
+          <div className="leading-tight">
+            <div className="font-bold tracking-tight text-sm">{g.companyName}</div>
+            <Tip tip={lv.next ? `Reach ${lv.next} more milestone${lv.next === 1 ? "" : "s"} to level up.` : "Max level. You built the empire."}>
+              <div className="text-[11px] text-gold-400 font-semibold">Lv {lv.level} · {lv.title}</div>
+            </Tip>
+          </div>
+        </div>
+        <div className="num text-sm text-ink-300">
+          {fmtDate(g)} <span className="text-ink-500">· day {g.day}</span>
+          {sunday && <span className="ml-1.5 text-sky2-400">☾ closed</span>}
+        </div>
         <div className="flex items-center gap-1 ml-auto">
           {([0, 1, 2, 4] as const).map((v) => (
             <button key={v} onClick={() => setSpeed(v)}
@@ -75,10 +115,7 @@ function TopBar({ g }: { g: GameState }) {
           <Tip tip="Advance exactly one day."><button className="btn btn-ghost" onClick={() => A.stepDay()}>+1 day</button></Tip>
         </div>
         <div className="flex items-center gap-5 text-sm">
-          <Tip tip="Cash on hand. Don't let payroll catch you at zero.">
-            <span className={`num font-semibold ${g.cash < 0 ? "text-coral-400" : g.cash < 250 ? "text-gold-400" : "text-mint-400"}`}>{money(g.cash)}</span>
-          </Tip>
-          <Tip tip="Today's revenue minus today's expenses."><span className={`num ${profitToday >= 0 ? "text-ink-200" : "text-coral-400"}`}>{money(profitToday)} today</span></Tip>
+          <CashHUD g={g} />
           <Tip tip="Reputation drives demand, pricing power, referrals and commercial opportunities."><span><Stars value={g.reputation} /></span></Tip>
         </div>
       </div>
