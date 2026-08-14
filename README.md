@@ -1,6 +1,6 @@
 # VentureBuilt
 
-A browser-based business simulation. Start with a few hundred dollars and a beat-up starter kit; build a service company through pricing strategy, hiring, equipment, marketing, reputation, and cash-flow management. Runs entirely client-side — no backend, no accounts.
+A browser-base business simulation. Start with a few hundred dollars and a beat-up starter kit; build a service company through pricing strategy, hiring, equipment, marketing, reputation, and cash-flow management. Runs entirely client-side — no backend, no accounts.
 
 ## Run it
 
