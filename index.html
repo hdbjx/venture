@@ -1,12 +1,55 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VentureBuilt — Business Simulator</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  @apply bg-ink-950 text-ink-100 font-sans antialiased;
+  background-image: radial-gradient(1200px 600px at 80% -10%, rgba(76,195,255,0.06), transparent),
+                    radial-gradient(900px 500px at -10% 110%, rgba(61,220,151,0.05), transparent);
+}
+.num { @apply font-num tabular-nums; }
+.card { @apply bg-ink-900/80 border border-ink-700/60 rounded-xl; }
+.btn { @apply px-3 py-1.5 rounded-lg text-sm font-medium bg-ink-700 hover:bg-ink-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+.btn-primary { @apply bg-mint-500/90 hover:bg-mint-400 text-ink-950; }
+.btn-danger { @apply bg-coral-400/20 text-coral-400 hover:bg-coral-400/30; }
+.btn-ghost { @apply bg-transparent hover:bg-ink-800; }
+.label { @apply text-[11px] uppercase tracking-wider text-ink-400; }
+input[type="range"] { @apply accent-mint-400; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { @apply bg-ink-700 rounded; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+.toast { animation: toast-in .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* ---------------------------------------------------------------- game feel */
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn { transition: transform 140ms var(--ease-out-strong), background-color 140ms ease, border-color 140ms ease; }
+.btn:active { transform: scale(0.96); }
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.anim-bob { animation: bob 1.6s ease-in-out infinite; }
+
+@keyframes bubble { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(-22px); opacity: 0; } }
+.anim-bubble { animation: bubble 1.8s ease-out infinite; }
+
+@keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.anim-twinkle { animation: twinkle 2.6s ease-in-out infinite; }
+
+@keyframes cashfloat {
+  0% { transform: translateY(2px) scale(0.95); opacity: 0; }
+  15% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-16px); opacity: 0; }
+}
+.cash-float { animation: cashfloat 1.4s var(--ease-out-strong) forwards; }
+
+@keyframes ticketIn { from { transform: translateY(4px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+.ticket { animation: ticketIn 220ms var(--ease-out-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-bob, .anim-bubble, .anim-twinkle, .cash-float, .ticket { animation: none; }
+  .btn:active { transform: none; }
+}
